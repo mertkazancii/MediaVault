@@ -236,7 +236,9 @@ See [`RELEASE_NOTES_2.0.6.md`](RELEASE_NOTES_2.0.6.md).
 
 ## License
 
-Choose and add a license before making the repository public.
+MediaVault is licensed under the MIT License.
+
+See the [LICENSE](LICENSE) file for details.
 
 ---
 
