@@ -1,0 +1,83 @@
+{
+  "name": "mediavault",
+  "version": "2.0.6",
+  "description": "A local-first Windows media library for organizing and preserving personal media.",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "start": "electron .",
+    "build": "vite build",
+    "dist:win": "npm run build && electron-builder --win nsis:x64 --publish never",
+    "dist:portable": "npm run build && electron-builder --win portable:x64 --publish never",
+    "dist": "npm run build && electron-builder --win nsis:x64 portable:x64 --publish never"
+  },
+  "dependencies": {
+    "lucide-react": "0.468.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "ffmpeg-static": "5.2.0"
+  },
+  "devDependencies": {
+    "concurrently": "9.0.1",
+    "vite": "5.4.10",
+    "wait-on": "8.0.1",
+    "@vitejs/plugin-react": "4.3.3",
+    "electron-builder": "25.1.8",
+    "electron": "32.1.2"
+  },
+  "productName": "MediaVault",
+  "author": "MediaVault",
+  "build": {
+    "appId": "com.mediavault.desktop",
+    "productName": "MediaVault",
+    "asar": true,
+    "compression": "normal",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/mediavault.ico",
+      "artifactName": "MediaVault-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MediaVault",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "installerLanguages": [
+        "en-US"
+      ],
+      "language": 1033,
+      "artifactName": "MediaVault-${version}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "MediaVault-${version}-Portable.${ext}"
+    },
+    "publish": null
+  }
+}
