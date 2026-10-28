@@ -1,15 +1,8 @@
 # Changelog
 
-## 2.0.3
-- Windows release packaging is now configured.
-- Added a MediaVault Windows application icon.
-- Added NSIS installer and portable build targets.
-- Added `build-windows.ps1` release helper.
-- Added release smoke-test checklist.
-- Kept the v2.0.2 interface and features unchanged.
+## 2.2.7
+- UI consistency improvements for hover, focus, and motion preferences.
+- Search input responsiveness and lazy loading hints for media cards.
+- Existing media viewer, filters, bulk actions, Chrome Web Clipper, and system-tray behavior retained.
 
-
-## 2.0.6
-- Renamed the Windows installer artifact to `MediaVault-2.0.6-Setup.exe`.
-- Kept portable artifact naming explicit.
-- Added clean-release, artifact verification and SHA-256 checksum generation to the Windows release script.
+Earlier release history is documented in `RELEASE.md` where available.

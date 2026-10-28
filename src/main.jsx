@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
 import { createRoot } from "react-dom/client";
-import { Archive, Bookmark, ChevronDown, ChevronRight, File, Folder, FolderOpen, Heart, Image as ImageIcon, MoreHorizontal, Play, Plus, Search, Settings, Tag, Trash2, X, Check, Move, ExternalLink, FolderInput, Video, SlidersHorizontal, Palette, PanelRight, Clock3, HardDrive, Film, CircleDot, Star, Copy, Pencil, ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2, Info, Clipboard, BookmarkPlus, Inbox, ArchiveRestore } from "lucide-react";
+import { Archive, Bookmark, ChevronDown, ChevronRight, File, Folder, FolderOpen, Heart, Image as ImageIcon, MoreHorizontal, Play, Plus, Search, Settings, Tag, Trash2, X, Check, Move, ExternalLink, FolderInput, Video, SlidersHorizontal, Palette, PanelRight, Clock3, HardDrive, Film, CircleDot, Star, Copy, Pencil, ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2, Info, Clipboard, BookmarkPlus, Inbox, ArchiveRestore, Filter } from "lucide-react";
 import "./styles.css";
 
 const demoItems = [
@@ -15,42 +15,42 @@ const demoGradients = [
   "linear-gradient(135deg,#2a2d35,#6b7280)",
   "linear-gradient(135deg,#1e293b,#7c3aed)",
   "linear-gradient(135deg,#0f172a,#0ea5e9)",
-  "linear-gradient(135deg,#312e81,#f97316)",
+  "linear-gradient(135deg,#312e81,#bd8968)",
   "linear-gradient(135deg,#064e3b,#14b8a6)"
 ];
 
 const itemColors = [
   {name:"None", value:null, css:"transparent"},
-  {name:"Red", value:"#ef4444", css:"#ef4444"},
-  {name:"Orange", value:"#f97316", css:"#f97316"},
-  {name:"Yellow", value:"#eab308", css:"#eab308"},
-  {name:"Green", value:"#22c55e", css:"#22c55e"},
-  {name:"Cyan", value:"#06b6d4", css:"#06b6d4"},
-  {name:"Blue", value:"#3b82f6", css:"#3b82f6"},
-  {name:"Purple", value:"#8b5cf6", css:"#8b5cf6"},
-  {name:"Pink", value:"#ec4899", css:"#ec4899"}
+  {name:"Red", value:"#ef4444", css:"#b96b70"},
+  {name:"Orange", value:"#f97316", css:"#bd8968"},
+  {name:"Yellow", value:"#eab308", css:"#b9a66b"},
+  {name:"Green", value:"#22c55e", css:"#789b7d"},
+  {name:"Cyan", value:"#06b6d4", css:"#729da6"},
+  {name:"Blue", value:"#3b82f6", css:"#748fb8"},
+  {name:"Purple", value:"#8b5cf6", css:"#9583b8"},
+  {name:"Pink", value:"#ec4899", css:"#b9829c"}
 ];
 const tagColors = [
   {name:"None", value:null, css:"transparent"},
-  {name:"Red", value:"#ef4444", css:"#ef4444"},
-  {name:"Orange", value:"#f97316", css:"#f97316"},
-  {name:"Yellow", value:"#eab308", css:"#eab308"},
-  {name:"Green", value:"#22c55e", css:"#22c55e"},
-  {name:"Cyan", value:"#06b6d4", css:"#06b6d4"},
-  {name:"Blue", value:"#3b82f6", css:"#3b82f6"},
-  {name:"Purple", value:"#8b5cf6", css:"#8b5cf6"},
-  {name:"Pink", value:"#ec4899", css:"#ec4899"}
+  {name:"Red", value:"#ef4444", css:"#b96b70"},
+  {name:"Orange", value:"#f97316", css:"#bd8968"},
+  {name:"Yellow", value:"#eab308", css:"#b9a66b"},
+  {name:"Green", value:"#22c55e", css:"#789b7d"},
+  {name:"Cyan", value:"#06b6d4", css:"#729da6"},
+  {name:"Blue", value:"#3b82f6", css:"#748fb8"},
+  {name:"Purple", value:"#8b5cf6", css:"#9583b8"},
+  {name:"Pink", value:"#ec4899", css:"#b9829c"}
 ];
 const folderColors = [
   {name:"None", value:null, css:"transparent"},
-  {name:"Red", value:"#ef4444", css:"#ef4444"},
-  {name:"Orange", value:"#f97316", css:"#f97316"},
-  {name:"Yellow", value:"#eab308", css:"#eab308"},
-  {name:"Green", value:"#22c55e", css:"#22c55e"},
-  {name:"Cyan", value:"#06b6d4", css:"#06b6d4"},
-  {name:"Blue", value:"#3b82f6", css:"#3b82f6"},
-  {name:"Purple", value:"#8b5cf6", css:"#8b5cf6"},
-  {name:"Pink", value:"#ec4899", css:"#ec4899"}
+  {name:"Red", value:"#ef4444", css:"#b96b70"},
+  {name:"Orange", value:"#f97316", css:"#bd8968"},
+  {name:"Yellow", value:"#eab308", css:"#b9a66b"},
+  {name:"Green", value:"#22c55e", css:"#789b7d"},
+  {name:"Cyan", value:"#06b6d4", css:"#729da6"},
+  {name:"Blue", value:"#3b82f6", css:"#748fb8"},
+  {name:"Purple", value:"#8b5cf6", css:"#9583b8"},
+  {name:"Pink", value:"#ec4899", css:"#b9829c"}
 ];
 
 
@@ -74,7 +74,7 @@ function FolderTree({ folders, current, setCurrent, onAdd, onRename, onDelete, o
     const kids = children(folder.id);
     const isOpen = open[folder.id];
     return <React.Fragment key={folder.id}>
-      <div className={`side-row folder-drop-row ${current===`folder:${folder.id}`?"active":""} ${dragOverFolder===folder.id?"drop-target":""}`} style={{paddingLeft: 12+depth*14}}
+      <div data-folder-id={folder.id} className={`side-row folder-drop-row ${current===`folder:${folder.id}`?"active":""} ${dragOverFolder===folder.id?"drop-target":""}`} style={{paddingLeft: 12+depth*14}}
         onDragEnter={e=>{
           e.preventDefault();
           e.stopPropagation();
@@ -94,7 +94,6 @@ function FolderTree({ folders, current, setCurrent, onAdd, onRename, onDelete, o
           e.preventDefault();
           e.stopPropagation();
 
-          // First handle an internal MediaVault drag (move existing items).
           const custom=e.dataTransfer.getData("application/x-mediavault-item");
           const plain=e.dataTransfer.getData("text/plain");
           const payload=custom || plain;
@@ -104,12 +103,11 @@ function FolderTree({ folders, current, setCurrent, onAdd, onRename, onDelete, o
             try{
               const parsed=JSON.parse(payload);
               ids=Array.isArray(parsed)?parsed:[];
-            }catch{}
-            if(!ids.length) ids=[payload];
-            if(ids.length) onDropItems(ids,folder.id);
+            }catch{
+              ids=[payload];
+            }
+            if(ids.length) onDropItems?.(ids,folder.id);
           } else if(e.dataTransfer.files?.length){
-            // Otherwise this is an OS/Desktop file drag: import the files
-            // directly into the folder that is currently being hovered.
             const paths=[];
             for(const file of [...e.dataTransfer.files]){
               const p=window.mediaVault.getDroppedFilePath(file);
@@ -136,7 +134,7 @@ function FolderTree({ folders, current, setCurrent, onAdd, onRename, onDelete, o
   </div>;
 }
 
-function useLazyVisible(ref, rootMargin="650px"){
+function useLazyVisible(ref, rootMargin="320px"){
   const [visible,setVisible]=useState(false);
   useEffect(()=>{
     const el=ref.current;
@@ -171,7 +169,7 @@ function ImageThumb({ path, className="" }) {
   },[path,shouldLoad]);
   return <div ref={hostRef} className={`lazy-thumb ${className}`}>
     {src
-      ? <img className="thumb-media" src={src} loading="lazy" decoding="async" />
+      ? <img className="thumb-media" src={src} loading="lazy" decoding="async" draggable="false" />
       : <div className="asset-loading"><ImageIcon size={28}/><span>{shouldLoad?"Generating thumbnail…":"Loading when visible…"}</span></div>}
   </div>;
 }
@@ -230,11 +228,11 @@ function VideoThumb({ path, className="" }) {
 
   return <div ref={hostRef} className={`lazy-thumb ${className}`}>
     {src
-      ? <img className="thumb-media" src={src} loading="lazy" decoding="async" />
+      ? <img className="thumb-media" src={src} loading="lazy" decoding="async" draggable="false" />
       : fallback
         ? <div className="file-thumb"><Play size={34}/><span>VIDEO</span></div>
         : shouldLoad
-          ? <video ref={videoRef} className="thumbnail-generator" src={fileUrl(path)} muted playsInline preload="metadata"/>
+          ? <video ref={videoRef} className="thumbnail-generator" src={fileUrl(path)} muted playsInline preload="metadata" draggable="false"/>
           : <div className="asset-loading"><Video size={28}/><span>Loading when visible…</span></div>}
   </div>;
 }
@@ -245,13 +243,10 @@ const Card = React.memo(function Card({ item, selected, onClick, onOpen, onFavor
   return <div className={`card ${selected?"selected":""} ${item.color?"has-color":""} ${nativeDropOver?"native-drop-target":""} card-${item.type}`} style={item.color?{"--item-color":item.color}:undefined} draggable={!item.demo}
     onDragStart={e=>{if(!item.demo){
       e.dataTransfer.effectAllowed="move";
+      e.dataTransfer.dropEffect="move";
+      // The parent owns the current selection and writes the drag payload.
+      // Do not treat the Card's `selected` boolean as an array here.
       onDragStart?.(item.id,e);
-      const selectionIds = selected.includes(item.id)
-        ? selected.filter(x=>!String(x).startsWith("demo-"))
-        : [item.id];
-      const payload = JSON.stringify(selectionIds);
-      e.dataTransfer.setData("application/x-mediavault-item",payload);
-      e.dataTransfer.setData("text/plain",payload);
     }}}
     onDragEnd={()=>onDragEnd?.()}
     onClick={onClick} onDoubleClick={()=>onOpen(item)}
@@ -301,7 +296,6 @@ const Card = React.memo(function Card({ item, selected, onClick, onOpen, onFavor
       item.type==="image" ? <ImageThumb path={item.stored_path} /> :
       item.type==="video" ? <VideoThumb path={item.stored_path} /> :
       <div className="file-thumb"><File size={42}/><span>{item.extension?.replace(".","").toUpperCase()}</span></div>}
-      {item.color && <span className="item-color-dot" style={{background:item.color}} title="Colored item"/>}
       <button className="card-more" title="More" onClick={e=>{e.stopPropagation();onContextMenu(e,item)}}><MoreHorizontal size={17}/></button>
       <button className={`fav-btn ${item.favorite?"on":""}`} onClick={e=>{e.stopPropagation();onFavorite(item.id)}}><Heart size={16} fill={item.favorite?"currentColor":"none"}/></button>
       {selected && <div className="selected-check"><Check size={14}/></div>}
@@ -345,11 +339,21 @@ function Modal({ children, onClose, wide=false }) {
 
 function App() {
   const [db,setDb]=useState({items:[],folders:[],tags:[],collections:[]});
+  const [webClipperRequest,setWebClipperRequest]=useState(null);
+  const [webClipperHover,setWebClipperHover]=useState(null);
+  const [webClipperBusy,setWebClipperBusy]=useState(false);
+  const [webClipperError,setWebClipperError]=useState("");
   const [view,setView]=useState("all");
   const [search,setSearch]=useState("");
+  // Keep typing responsive while expensive filtering is deferred for large libraries.
+  const deferredSearch=useDeferredValue(search);
+  const [filterOpen,setFilterOpen]=useState(false);
+  const [quickFilters,setQuickFilters]=useState({type:"",color:"",favorite:"",untagged:false,created:"",size:""});
   const [selected,setSelected]=useState([]);
   const [preview,setPreview]=useState(null);
   const [viewerZoom,setViewerZoom]=useState(1);
+  const [viewerPan,setViewerPan]=useState({x:0,y:0});
+  const viewerPanStart=useRef(null);
   const [viewerRotation,setViewerRotation]=useState(0);
   const [viewerFullscreen,setViewerFullscreen]=useState(false);
   const [viewerMetadata,setViewerMetadata]=useState(null);
@@ -372,6 +376,10 @@ function App() {
   const [collectionPicker,setCollectionPicker]=useState(null);
   const [savedSearchMenu,setSavedSearchMenu]=useState(null);
   const [draggedId,setDraggedId]=useState(null);
+  const [draggedItems,setDraggedItems]=useState([]);
+  const draggedItemsRef=useRef([]);
+  const dragPointRef=useRef({x:0,y:0});
+  const dropHandledRef=useRef(false);
   const [dragOverFolder,setDragOverFolder]=useState(null);
   const [metadata,setMetadata]=useState(null);
   const [infoDialog,setInfoDialog]=useState(null);
@@ -415,6 +423,19 @@ function App() {
     window.__mediaVaultToast=window.setTimeout(()=>setToast(null),2200);
   }
   useEffect(()=>{refresh();},[]);
+  useEffect(()=>{
+    const unsubscribe=window.mediaVault.onWebClipperRequest?.(clip=>{
+      setWebClipperRequest(clip||null);
+      setWebClipperHover(null);
+      setWebClipperBusy(false);
+      setWebClipperError("");
+    });
+    const unsubscribeLibrary=window.mediaVault.onWebClipperLibraryUpdated?.(()=>{ refresh(); });
+    window.mediaVault.notifyWebClipperReady?.();
+    const onEscape=e=>{if(e.key==="Escape")setWebClipperRequest(null);};
+    window.addEventListener("keydown",onEscape);
+    return()=>{unsubscribe?.();unsubscribeLibrary?.();window.removeEventListener("keydown",onEscape);};
+  },[]);
   async function warmThumbnails(){
     const media=db.items.filter(x=>x.type==="image"||x.type==="video");
     for(const item of media){
@@ -460,7 +481,7 @@ function App() {
   const activeCollection = view.startsWith("collection:") ? view.slice(11) : null;
 
   const filtered=useMemo(()=>{
-    const raw=search.trim().toLowerCase();
+    const raw=deferredSearch.trim().toLowerCase();
     const tokens=raw ? raw.match(/(?:"[^"]+"|\S+)/g)?.map(x=>x.replace(/^"|"$/g,"")) || [] : [];
     const structured={tag:[],type:[],folder:[],ext:[],color:[],size:[],created:[],modified:[],note:[],source:[]}; let favoriteFilter=null; const free=[];
     for(const token of tokens){
@@ -469,13 +490,21 @@ function App() {
       else if(token.startsWith('#')) structured.tag.push(token.slice(1)); else free.push(token);
     }
     return allItems.filter(item=>{
+      if(quickFilters.type && item.type!==quickFilters.type) return false;
+      if(quickFilters.color && (item.color||"none").toLowerCase()!==(colorAliases[quickFilters.color]||quickFilters.color).toLowerCase()) return false;
+      if(quickFilters.favorite==="yes" && !item.favorite) return false;
+      if(quickFilters.favorite==="no" && item.favorite) return false;
+      if(quickFilters.untagged && (item.tags||[]).length) return false;
+      if(quickFilters.created){const age=Date.now()-new Date(item.created_at||0).getTime();if(!item.created_at || (quickFilters.created==="today" ? new Date(item.created_at).toDateString()!==new Date().toDateString() : age>Number(quickFilters.created)*86400000)) return false;}
+      if(quickFilters.size==="large" && Number(item.size||0)<100*1024*1024) return false;
+      if(quickFilters.size==="small" && Number(item.size||0)>=10*1024*1024) return false;
       if(view==="smart:recent"){const age=Date.now()-new Date(item.created_at||0).getTime();if(!item.created_at||age>7*24*60*60*1000)return false;}
       if(view==="smart:favorites"&&!item.favorite)return false;
       if(view==="smart:images"&&item.type!=="image")return false;
       if(view==="smart:videos"&&item.type!=="video")return false;
       if(view==="smart:large"&&(!item.size||item.size<100*1024*1024))return false;
       if(view==="inbox"&&!item.inbox) return false;
-      if(view==="favorites"&&!item.favorite) return false; if(activeFolder&&item.folder_id!==activeFolder) return false; if(activeTag&&!item.tags?.includes(activeTag)) return false;
+      if(view==="favorites"&&!item.favorite) return false; if(activeFolder&&String(item.folder_id||"")!==String(activeFolder)) return false; if(activeTag&&!item.tags?.includes(activeTag)) return false;
       if(activeCollection&&!(item.collection_ids||[]).includes(activeCollection)) return false;
       if(view==="images"&&item.type!=="image") return false; if(view==="videos"&&item.type!=="video") return false;
       if(view==="recent"){const age=Date.now()-new Date(item.created_at||0).getTime();if(!item.created_at||age>7*24*60*60*1000)return false;}
@@ -488,7 +517,7 @@ function App() {
       if(structured.created.length&&!structured.created.every(x=>dateMatches(item.created_at,x)))return false;
       if(structured.modified.length&&!structured.modified.every(x=>dateMatches(item.modified_at,x)))return false;
       if(structured.tag.length&&!structured.tag.every(t=>item.tags?.some(x=>x.toLowerCase().includes(t))))return false;
-      if(structured.folder.length){const folder=db.folders.find(f=>structured.folder.some(q=>f.name.toLowerCase().includes(q)));if(!folder||item.folder_id!==folder.id)return false;}
+      if(structured.folder.length){const folder=db.folders.find(f=>structured.folder.some(q=>f.name.toLowerCase().includes(q)));if(!folder||String(item.folder_id||"")!==String(folder.id))return false;}
       if(structured.note.length&&!structured.note.every(q=>String(item.notes||"").toLowerCase().includes(q)))return false;
       if(structured.source.length&&!structured.source.every(q=>String(item.source_url||"").toLowerCase().includes(q)))return false;
       if(free.length){
@@ -497,7 +526,7 @@ function App() {
       }
       return true;
     });
-  },[allItems,view,search,activeFolder,activeTag,activeCollection,db.folders]);
+  },[allItems,view,deferredSearch,activeFolder,activeTag,activeCollection,db.folders,quickFilters]);
 
   const emptyState = useMemo(()=>{
     if(search.trim()) return {
@@ -519,6 +548,45 @@ function App() {
     };
     return {icon:"archive",title:"No media here",text:"Import files or change the current filter."};
   },[search,view,db.items.length]);
+
+  useEffect(()=>{
+    const rememberPoint=e=>{
+      if(draggedItemsRef.current.length){
+        dragPointRef.current={x:e.clientX,y:e.clientY};
+      }
+    };
+    const fallbackOnDragEnd=async()=>{
+      const ids=[...draggedItemsRef.current];
+      if(!ids.length) return;
+      try{
+        if(!dropHandledRef.current){
+          const point=dragPointRef.current;
+          const el=document.elementFromPoint(point.x,point.y);
+          const row=el?.closest?.(".folder-drop-row");
+          const folderId=row?.dataset?.folderId || window.__mediaVaultDragFolderId || null;
+          if(folderId && view!=="duplicates"){
+            dropHandledRef.current=true;
+            await moveSelectedToFolder(ids,folderId);
+          }
+        }
+      }finally{
+        draggedItemsRef.current=[];
+        dragPointRef.current={x:0,y:0};
+        dropHandledRef.current=false;
+        window.__mediaVaultDragFolderId=null;
+        window.__mediaVaultDragPoint=null;
+        setDragOverFolder(null);
+        setDraggedItems([]);
+        setDraggedId(null);
+      }
+    };
+    window.addEventListener("dragover",rememberPoint);
+    window.addEventListener("dragend",fallbackOnDragEnd);
+    return()=>{
+      window.removeEventListener("dragover",rememberPoint);
+      window.removeEventListener("dragend",fallbackOnDragEnd);
+    };
+  },[view,db.folders,selected]);
 
   const title = view==="inbox"?"Inbox":view==="all"?"All Items":view==="favorites"?"Favorites":view==="images"?"Images":view==="videos"?"Videos":view==="recent"?"Recently added":view==="large"?"Large files":view==="duplicates"?"Duplicates":view==="smart:recent"?"Recently Added":view==="smart:favorites"?"Favorites":view==="smart:images"?"All Images":view==="smart:videos"?"All Videos":view==="smart:large"?"Large Files":
     activeFolder ? (db.folders.find(f=>f.id===activeFolder)?.name||"Folder") :
@@ -616,6 +684,7 @@ function App() {
     const nextFavorite=!items.every(item=>item.favorite);
     setDb(await window.mediaVault.setItemFavorite(ids,nextFavorite));
     notify(nextFavorite ? `Added ${ids.length} item(s) to favorites.` : `Removed ${ids.length} item(s) from favorites.`);
+    setBulkMenu(null);
   }
 
 
@@ -861,10 +930,13 @@ function App() {
   }
 
   async function moveSelectedToFolder(ids, folderId){
-    const moving = ids?.length ? ids : selected;
-    if(!moving.length) return;
-    setDb(await window.mediaVault.moveItems(moving,folderId));
-    setSelected(s=>s.filter(id=>!moving.includes(id)));
+    const moving = (ids?.length ? ids : selected).map(String).filter(Boolean);
+    if(!moving.length || !folderId) return;
+    const next=await window.mediaVault.moveItems(moving,folderId);
+    setDb(next);
+    setSelected(s=>s.filter(id=>!moving.includes(String(id))));
+    const folderName=db.folders.find(f=>String(f.id)===String(folderId))?.name || "folder";
+    notify(`${moving.length} item${moving.length===1?"":"s"} moved to ${folderName}.`);
   }
 
   function openFolderAction(mode, ids){
@@ -1209,6 +1281,7 @@ function App() {
 
   useEffect(()=>{
     setViewerZoom(1);
+    setViewerPan({x:0,y:0});
     setViewerRotation(0);
     setViewerMetadata(null);
     if(preview && !preview.demo && preview.stored_path){
@@ -1345,7 +1418,7 @@ function App() {
         if(e.key==="Escape"){e.preventDefault();setPreview(null);}
         if(e.key==="+" || e.key==="="){e.preventDefault();setViewerZoom(z=>Math.min(3,Math.round((z+.1)*100)/100));}
         if(e.key==="-" || e.key==="_"){e.preventDefault();setViewerZoom(z=>Math.max(.25,Math.round((z-.1)*100)/100));}
-        if(e.key==="0"){e.preventDefault();setViewerZoom(1);setViewerRotation(0);}
+        if(e.key==="0"){e.preventDefault();setViewerZoom(1);setViewerPan({x:0,y:0});setViewerRotation(0);}
         if(e.key.toLowerCase()==="r"){e.preventDefault();setViewerRotation(r=>(r+90)%360);}
         if(e.key.toLowerCase()==="f"){e.preventDefault();toggleViewerFullscreen();}
       }
@@ -1359,6 +1432,58 @@ function App() {
   },[preview,previewIndex,filtered,selected,db.items,activeFolder]);
 
 
+
+  function droppedWebClipUrl(event){
+    try{
+      const transfer=event.dataTransfer;
+      const candidates=[transfer?.getData("text/uri-list"),transfer?.getData("text/plain"),transfer?.getData("text/html")];
+      for(const candidate of candidates){
+        const text=String(candidate||"").trim();
+        if(!text)continue;
+        const match=text.match(/https?:\/\/[^\s"'<>]+/i);
+        const value=(match?match[0]:text).replace(/[),.;]+$/g,"");
+        try{const parsed=new URL(value);if(parsed.protocol==="http:"||parsed.protocol==="https:")return value;}catch{}
+      }
+    }catch{}
+    return "";
+  }
+
+  async function saveWebClipperToFolder(folderId, droppedUrl=""){
+    if(!webClipperRequest||webClipperBusy)return;
+    const imageUrl=droppedUrl||webClipperRequest.imageUrl||"";
+    setWebClipperBusy(true);
+    setWebClipperError("");
+    try{
+      const result=await window.mediaVault.saveWebClip({
+        imageUrl,
+        pageUrl:webClipperRequest.pageUrl||"",
+        fileName:webClipperRequest.fileName||"Web clip",
+        folderId:folderId||null
+      });
+      if(result?.ok){
+        setDb(result.state||await window.mediaVault.getState());
+        const destination=folderId?(db.folders.find(folder=>folder.id===folderId)?.name||"folder"):"All items";
+        setWebClipperRequest(null);
+        setWebClipperHover(null);
+        setWebClipperBusy(false);
+        notify(result.duplicate?"This image is already in MediaVault.":`Saved to ${destination}.`);
+      }else{
+        setWebClipperError(result?.message||"Could not save this image. Try another image or check your connection.");
+        setWebClipperBusy(false);
+      }
+    }catch(error){
+      setWebClipperError(error?.message||"MediaVault could not save this image.");
+      setWebClipperBusy(false);
+    }
+  }
+
+  function handleWebClipperTargetDrop(event,folderId){
+    event.preventDefault();
+    event.stopPropagation();
+    setWebClipperHover(null);
+    const droppedUrl=droppedWebClipUrl(event);
+    saveWebClipperToFolder(folderId,droppedUrl);
+  }
 
   async function removeItemTag(item,tag){
     setDb(await window.mediaVault.updateItemTags(item.id,(item.tags||[]).filter(t=>t!==tag)));
@@ -1475,6 +1600,19 @@ function App() {
         <div className="breadcrumbs"><span>Library</span><ChevronRight size={15}/><strong>{title}</strong></div>
         <div className="top-actions">
           <div className="search"><Search size={16}/><input ref={searchRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…  tag:games type:video color:red size:>100mb created:7d" /><kbd>Ctrl K</kbd></div>
+          <div className="filter-anchor">
+            <button className={`icon-btn ${filterOpen||Object.values(quickFilters).some(v=>v!==""&&v!==false)?"active-filter":""}`} title="Advanced filters" onClick={()=>setFilterOpen(v=>!v)}><Filter size={17}/></button>
+            {filterOpen && <div className="filter-popover">
+              <div className="filter-popover-head"><strong>Advanced filters</strong><button className="tiny-btn" onClick={()=>setFilterOpen(false)}><X size={14}/></button></div>
+              <label>Media type<select value={quickFilters.type} onChange={e=>setQuickFilters(f=>({...f,type:e.target.value}))}><option value="">Any type</option><option value="image">Images</option><option value="video">Videos</option><option value="file">Other files</option></select></label>
+              <label>Color<select value={quickFilters.color} onChange={e=>setQuickFilters(f=>({...f,color:e.target.value}))}><option value="">Any color</option>{itemColors.filter(c=>c.value).map(c=><option key={c.name} value={c.name.toLowerCase()}>{c.name}</option>)}<option value="none">No color</option></select></label>
+              <label>Favorite<select value={quickFilters.favorite} onChange={e=>setQuickFilters(f=>({...f,favorite:e.target.value}))}><option value="">Any</option><option value="yes">Favorites only</option><option value="no">Not favorites</option></select></label>
+              <label>Added<select value={quickFilters.created} onChange={e=>setQuickFilters(f=>({...f,created:e.target.value}))}><option value="">Any time</option><option value="today">Today</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select></label>
+              <label>File size<select value={quickFilters.size} onChange={e=>setQuickFilters(f=>({...f,size:e.target.value}))}><option value="">Any size</option><option value="large">100 MB or larger</option><option value="small">Under 10 MB</option></select></label>
+              <label className="filter-check"><input type="checkbox" checked={quickFilters.untagged} onChange={e=>setQuickFilters(f=>({...f,untagged:e.target.checked}))}/> Untagged only</label>
+              <div className="filter-popover-actions"><button onClick={()=>setQuickFilters({type:"",color:"",favorite:"",untagged:false,created:"",size:""})}>Clear filters</button><button onClick={()=>setFilterOpen(false)}>Done</button></div>
+            </div>}
+          </div>
           <button className="icon-btn" title="Save current search (Ctrl Shift S)" disabled={!search.trim()} onClick={saveCurrentSearch}><BookmarkPlus size={17}/></button>
           <button className="icon-btn" title="Paste from clipboard (Ctrl V)" onClick={pasteClipboard}><Clipboard size={17}/></button>
           <div className="view-switch" title="View mode">
@@ -1493,6 +1631,8 @@ function App() {
         <div className="selection-actions">
           <button onClick={()=>setSelected([])}><X size={15}/> Clear</button>
           <button onClick={()=>setBulkMenu(bulkMenu==="tags"?null:"tags")}><Tag size={15}/> Tags</button>
+          <button onClick={toggleFavoriteSelection}><Heart size={15}/> Favorite</button>
+          <button onClick={()=>openCollectionPicker(selected)}><Bookmark size={15}/> Collections</button>
           <button onClick={()=>openFolderAction("copy",selected)}><Copy size={15}/> Copy</button><button onClick={()=>openFolderAction("move",selected)}><Move size={15}/> Move</button>
           <button onClick={()=>setBulkMenu(bulkMenu==="color"?null:"color")}><Palette size={15}/> Color</button>
           <button onClick={openBatchRename}><Pencil size={15}/> Rename</button>
@@ -1518,7 +1658,8 @@ function App() {
           if(target===e.currentTarget || target.classList?.contains("media-grid")){
             setContextMenu(null);
             setBulkMenu(null);
-            if(selected.length) setSelected([]);
+            setSelected([]);
+            setShowInspector(false);
           }
         }}
       >
@@ -1567,9 +1708,13 @@ function App() {
                 onDragStart={(id,e)=>{
                   setDraggedId(id);
                   const ids=selected.includes(id) ? selected.filter(x=>!String(x).startsWith("demo-")) : [id];
+                  draggedItemsRef.current=[...ids];
+                  dropHandledRef.current=false;
+                  setDraggedItems(ids);
                   e?.dataTransfer?.setData("application/x-mediavault-item",JSON.stringify(ids));
+                  e?.dataTransfer?.setData("text/plain",JSON.stringify(ids));
                 }}
-                onDragEnd={()=>{setDraggedId(null);setDragOverFolder(null)}} onDropTag={dropTagOnItem} onDropFiles={dropFilesOnItem}/>)}
+                onDragEnd={()=>{setDraggedId(null);setDraggedItems([]);draggedItemsRef.current=[];setDragOverFolder(null);window.__mediaVaultDragFolderId=null}} onDropTag={dropTagOnItem} onDropFiles={dropFilesOnItem}/>)}
             </div>
           </section>)}
         </div> : <div className={`grid media-grid ${viewMode}-grid`}>
@@ -1578,9 +1723,13 @@ function App() {
             onDragStart={(id,e)=>{
               setDraggedId(id);
               const ids=selected.includes(id) ? selected.filter(x=>!String(x).startsWith("demo-")) : [id];
+              draggedItemsRef.current=[...ids];
+              dropHandledRef.current=false;
+              setDraggedItems(ids);
               e?.dataTransfer?.setData("application/x-mediavault-item",JSON.stringify(ids));
+              e?.dataTransfer?.setData("text/plain",JSON.stringify(ids));
             }}
-            onDragEnd={()=>{setDraggedId(null);setDragOverFolder(null)}} onDropTag={dropTagOnItem} onDropFiles={dropFilesOnItem}/>)}
+            onDragEnd={()=>{setDraggedId(null);setDraggedItems([]);draggedItemsRef.current=[];setDragOverFolder(null);window.__mediaVaultDragFolderId=null}} onDropTag={dropTagOnItem} onDropFiles={dropFilesOnItem}/>)}
           {!filtered.length && <div className={`empty-state ${emptyState.firstRun?"first-run":""}`}>
             {emptyState.icon==="search" ? <Search size={42}/> :
              emptyState.icon==="heart" ? <Heart size={42}/> :
@@ -1654,8 +1803,9 @@ function App() {
       </div>
 
       <div className="viewer-main">
-        <div className="viewer-stage">
-          <div className="viewer-canvas" style={{transform:`scale(${viewerZoom}) rotate(${viewerRotation}deg)`}}>
+        <div className={`viewer-stage ${viewerZoom>1?"is-zoomed":""}`} onWheel={e=>{if(preview.type==="video" && e.target.tagName==="VIDEO")return;e.preventDefault();setViewerZoom(z=>{const next=Math.max(.25,Math.min(4,Math.round((z+(e.deltaY<0?.1:-.1))*100)/100));if(next<=1)setViewerPan({x:0,y:0});return next;});}}>
+          <div className="viewer-canvas" onPointerDown={e=>{if(viewerZoom<=1 || e.button!==0 || e.target.closest("video"))return;e.currentTarget.setPointerCapture?.(e.pointerId);viewerPanStart.current={x:e.clientX,y:e.clientY,pan:viewerPan};}} onPointerMove={e=>{if(!viewerPanStart.current)return;const start=viewerPanStart.current;setViewerPan({x:start.pan.x+e.clientX-start.x,y:start.pan.y+e.clientY-start.y});}} onPointerUp={()=>{viewerPanStart.current=null;}} onPointerCancel={()=>{viewerPanStart.current=null;}} style={{transform:`translate(${viewerPan.x}px,${viewerPan.y}px) scale(${viewerZoom}) rotate(${viewerRotation}deg)`}}>
+
             {preview.demo ? <div className="preview-demo" style={{background:demoGradients[demoItems.findIndex(x=>x.id===preview.id)%demoGradients.length]}}>{preview.type==="video"&&<Play size={70}/>}</div> :
             preview.type==="image" ? <img src={fileUrl(preview.stored_path)} draggable="false" /> :
             preview.type==="video" ? <video src={fileUrl(preview.stored_path)} controls autoPlay /> :
@@ -1664,12 +1814,12 @@ function App() {
 
           <div className="viewer-controls">
             <button className="viewer-control-btn" title="Zoom out (-)" onClick={()=>setViewerZoom(z=>Math.max(.25,Math.round((z-.1)*100)/100))}><ZoomOut size={16}/></button>
-            <button className="viewer-zoom-value" title="Reset zoom (0)" onClick={()=>setViewerZoom(1)}>{Math.round(viewerZoom*100)}%</button>
+            <button className="viewer-zoom-value" title="Reset zoom (0)" onClick={()=>{setViewerZoom(1);setViewerPan({x:0,y:0});}}>{Math.round(viewerZoom*100)}%</button>
             <button className="viewer-control-btn" title="Zoom in (+)" onClick={()=>setViewerZoom(z=>Math.min(3,Math.round((z+.1)*100)/100))}><ZoomIn size={16}/></button>
             <button className="viewer-control-btn" title="Rotate (R)" onClick={()=>setViewerRotation(r=>(r+90)%360)}><RotateCw size={16}/></button>
             {!preview.demo && <button className="viewer-control-btn" title="Open externally" onClick={()=>window.mediaVault.openFile(preview.stored_path)}><ExternalLink size={16}/></button>}
             <div className="viewer-control-spacer"/>
-            <span className="viewer-hint">← → navigate · + / − zoom · R rotate · F fullscreen · Esc close</span>
+            <span className="viewer-hint">← → navigate · wheel zoom · drag to pan · R rotate · F fullscreen · Esc close</span>
           </div>
         </div>
 
@@ -2015,7 +2165,7 @@ function App() {
         <div className="settings-section">
           <span className="settings-title">About</span>
           <div className="about-grid">
-            <div><span>Version</span><strong>2.0.2</strong></div>
+            <div><span>Version</span><strong>2.2.1</strong></div>
             <div><span>Storage model</span><strong>Local-first</strong></div>
             <div><span>Library</span><strong>Documents\MediaVault</strong></div>
             <div><span>Backups</span><strong>Documents\MediaVault Backups</strong></div>
@@ -2038,9 +2188,51 @@ function App() {
           </div>
         </div>
 
-        <div className="settings-footer">MediaVault v2.0.2 · Local-first library</div>
+        <div className="settings-footer">MediaVault v2.2.1 · Local-first library</div>
       </div>
     </Modal>}
+
+    {webClipperRequest && <div className="web-clipper-overlay" onDragOver={e=>{e.preventDefault();e.stopPropagation();}} onDrop={e=>{e.preventDefault();e.stopPropagation();setWebClipperHover(null);}}>
+      <section className="web-clipper-dialog" role="dialog" aria-modal="true" aria-label="Save image to MediaVault">
+        <header className="web-clipper-header">
+          <div className="web-clipper-brand"><div className="web-clipper-mark"><Archive size={17}/></div><div><strong>Save to MediaVault</strong><small>Drop the image on All items or a folder</small></div></div>
+          <button className="web-clipper-close" onClick={()=>setWebClipperRequest(null)} title="Close"><X size={17}/></button>
+        </header>
+        <div className="web-clipper-preview-row">
+          <div className="web-clipper-preview">{webClipperRequest.imageUrl?<img src={webClipperRequest.imageUrl} alt="Image preview" onError={e=>{e.currentTarget.style.display="none";}}/>:<ImageIcon size={28}/>}</div>
+          <div className="web-clipper-preview-info"><strong>{webClipperRequest.fileName||"Web image"}</strong><span>{webClipperRequest.pageTitle||webClipperRequest.pageUrl||"Image from browser"}</span><small>{webClipperBusy?"Saving image…":webClipperError||"Drag to a destination, or click one to save."}</small></div>
+        </div>
+        <div className="web-clipper-destinations" aria-label="Save destinations">
+          <button type="button" className={`web-clipper-destination web-clipper-root ${webClipperHover==="root"?"is-over":""}`} disabled={webClipperBusy}
+            onClick={()=>saveWebClipperToFolder(null)}
+            onDragEnter={e=>{e.preventDefault();e.stopPropagation();setWebClipperHover("root");}}
+            onDragOver={e=>{e.preventDefault();e.stopPropagation();setWebClipperHover("root");}}
+            onDragLeave={()=>setWebClipperHover(null)}
+            onDrop={e=>handleWebClipperTargetDrop(e,null)}>
+            <span className="web-clipper-target-icon"><Archive size={19}/></span><span className="web-clipper-target-copy"><strong>All items</strong><small>Library root · {db.items.length} items</small></span><span className="web-clipper-target-arrow">↵</span>
+          </button>
+          <div className="web-clipper-folder-heading"><span>FOLDERS</span><small>{db.folders.length}</small></div>
+          <div className="web-clipper-folder-list">
+            {(()=>{
+              const children=parentId=>db.folders.filter(folder=>(folder.parentId||null)===parentId);
+              const flatten=(parentId=null,depth=0)=>children(parentId).flatMap(folder=>[{folder,depth},...flatten(folder.id,depth+1)]);
+              return flatten().map(({folder,depth})=><button type="button" key={folder.id}
+                className={`web-clipper-destination web-clipper-folder ${webClipperHover===folder.id?"is-over":""}`} disabled={webClipperBusy}
+                style={{paddingLeft:12+depth*18}}
+                onClick={()=>saveWebClipperToFolder(folder.id)}
+                onDragEnter={e=>{e.preventDefault();e.stopPropagation();setWebClipperHover(folder.id);}}
+                onDragOver={e=>{e.preventDefault();e.stopPropagation();setWebClipperHover(folder.id);}}
+                onDragLeave={()=>setWebClipperHover(null)}
+                onDrop={e=>handleWebClipperTargetDrop(e,folder.id)}>
+                <span className="web-clipper-target-icon"><Folder size={17} style={{color:folder.color||undefined}}/></span><span className="web-clipper-target-copy"><strong>{folder.name}</strong><small>{depth?`Subfolder · depth ${depth}`:"Folder"}</small></span><span className="web-clipper-target-arrow">↵</span>
+              </button>);
+            })()}
+            {!db.folders.length&&<div className="web-clipper-no-folders">No folders yet. You can save to All items.</div>}
+          </div>
+        </div>
+        <footer className="web-clipper-footer"><span>{webClipperBusy?"Please wait while MediaVault imports the image.":"Tip: release the mouse over a destination to save there."}</span><button onClick={()=>setWebClipperRequest(null)} disabled={webClipperBusy}>Cancel</button></footer>
+      </section>
+    </div>}
 
     {toast && <div className="toast">{toast}</div>}
 

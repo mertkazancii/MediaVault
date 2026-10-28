@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "MediaVault Web Clipper",
+  "version": "1.3.0",
+  "description": "Save web images into MediaVault using a centered in-page folder overlay.",
+  "minimum_chrome_version": "109",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA91xD5SE1ZSZNUns/26W5BhS7yYlt6Yus+8lMunTfyX7BasD6KntgpN6D+ik0BcbJKZLOkPtv8gOBHiT7TYsZr3KH2SIOeSYGqS/Nx87Dp2B5UhqiC+tp7xCWblzByvezDeP/dLOag1dG6L6hURxLZndxkGmCFcMLakclDUcBxi72g7jm2JQqDcvUsM9UpPXhBpvIMeWU0OtZHoa9QKBfo0ZNah0myqz6qXQSCkeLHPMqf+fqR138RtI/QlVKJyf81EvSmMy1kQZ5LBBnBefgAF8OMx6S63kX4TztjO3IcIzLbrFwH0L+9YZFxTr8x4c8DB73xeq5J0SuBjKVZUNSaQIDAQAB",
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1:43821/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_title": "Open MediaVault folder overlay",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

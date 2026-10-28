@@ -1,8 +1,9 @@
-const { app, BrowserWindow, ipcMain, shell, dialog, nativeImage, clipboard } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, dialog, nativeImage, clipboard, Tray, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const { execFile } = require("child_process");
+const http = require("http");
 const ffmpegPath = require("ffmpeg-static");
 
 const LIBRARY_ROOT = path.join(app.getPath("documents"), "MediaVault");
@@ -10,6 +11,238 @@ const DB_PATH = path.join(LIBRARY_ROOT, "library.json");
 const BACKUPS_ROOT = path.join(app.getPath("documents"), "MediaVault Backups");
 const TRASH_ROOT = path.join(LIBRARY_ROOT, ".trash");
 const UNDO_DELETE_PATH = path.join(LIBRARY_ROOT, ".undo-delete.json");
+const WEB_CLIPPER_EXTENSION_ID = "ajenamdghdmjdjapegdkfjhnnpaebccg";
+const WEB_CLIPPER_EXTENSION_ORIGIN = `chrome-extension://${WEB_CLIPPER_EXTENSION_ID}`;
+const WEB_CLIPPER_BRIDGE_PORT = 43821;
+const WEB_CLIPPER_BRIDGE_KEY = "mvclipper_72f16f4a-5bc8-4c1c-9f73-0e7dfcc4d3ba";
+const WEB_CLIPPER_MAX_BYTES = 50 * 1024 * 1024;
+let mainWindow = null;
+let webClipperBridgeServer = null;
+let queuedWebClipperRequest = null;
+let webClipperRendererReady = false;
+let tray = null;
+let isQuitting = false;
+
+
+function isHttpUrl(value) {
+  try {
+    const u=new URL(String(value||""));
+    return u.protocol==="http:"||u.protocol==="https:";
+  } catch { return false; }
+}
+
+function mimeExtension(value) {
+  const t=String(value||"").split(";")[0].trim().toLowerCase();
+  return ({"image/jpeg":".jpg","image/png":".png","image/gif":".gif","image/webp":".webp","image/avif":".avif","image/bmp":".bmp","image/svg+xml":".svg"})[t]||"";
+}
+
+async function downloadWebClip(url,referer,suggestedName) {
+  if(!isHttpUrl(url)) throw new Error("Only http:// and https:// images are supported.");
+  const headers={
+    "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
+    "Accept":"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+  };
+  if(isHttpUrl(referer)) headers.Referer=referer;
+  const response=await fetch(url,{redirect:"follow",headers});
+  if(!response.ok) throw new Error(`Image download failed (${response.status}).`);
+  const contentType=String(response.headers.get("content-type")||"").toLowerCase();
+  if(contentType.startsWith("text/html")||contentType.startsWith("application/json")) throw new Error("The website returned a page instead of an image. Try opening the image directly or use another source.");
+  const len=Number(response.headers.get("content-length")||0);
+  if(len>WEB_CLIPPER_MAX_BYTES) throw new Error("Image is larger than 50 MB.");
+  const buffer=Buffer.from(await response.arrayBuffer());
+  if(!buffer.length) throw new Error("Downloaded image is empty.");
+  if(buffer.length>WEB_CLIPPER_MAX_BYTES) throw new Error("Image is larger than 50 MB.");
+  let filename=cleanName(suggestedName||"Web clip");
+  if(!path.extname(filename)) {
+    let ext=mimeExtension(response.headers.get("content-type"));
+    if(!ext){try{ext=path.extname(new URL(response.url||url).pathname).toLowerCase();}catch{}}
+    filename+=ext||".jpg";
+  }
+  const tempDir=path.join(LIBRARY_ROOT,".web-clip-temp");
+  fs.mkdirSync(tempDir,{recursive:true});
+  const tempPath=uniqueDestination(tempDir,filename);
+  fs.writeFileSync(tempPath,buffer);
+  return tempPath;
+}
+
+function applyWebClipMetadata(itemId,{sourceUrl="",notes="",tags=[],collectionId=""}={}) {
+  const db=loadDB();
+  const item=db.items.find(x=>x.id===itemId);
+  if(!item) return db;
+  item.source_url=String(sourceUrl||"").trim();
+  item.notes=String(notes||"");
+  item.tags=Array.isArray(item.tags)?item.tags:[];
+  for(const raw of (Array.isArray(tags)?tags:[])) {
+    const tag=String(raw||"").replace(/^#/g,"").trim();
+    if(!tag) continue;
+    if(!db.tags.some(t=>t.name.toLowerCase()===tag.toLowerCase())) db.tags.push({id:id("tag"),name:tag,color:null,created_at:new Date().toISOString()});
+    const canonical=db.tags.find(t=>t.name.toLowerCase()===tag.toLowerCase())?.name||tag;
+    if(!item.tags.includes(canonical)) item.tags.push(canonical);
+  }
+  if(collectionId && db.collections.some(c=>c.id===collectionId)) {
+    item.collection_ids=Array.isArray(item.collection_ids)?[...new Set(item.collection_ids)]:[];
+    if(!item.collection_ids.includes(collectionId)) item.collection_ids.push(collectionId);
+  }
+  saveDB(db);
+  return db;
+}
+
+async function saveBrowserWebClip(payload = {}) {
+  let tempPath = null;
+  try {
+    const imageUrl = String(payload.url || payload.imageUrl || "").trim();
+    const pageUrl = String(payload.pageUrl || "").trim();
+    if (!isHttpUrl(imageUrl)) {
+      return { ok: false, message: "This image URL cannot be saved. Only HTTP and HTTPS images are supported." };
+    }
+
+    const before = loadDB();
+    const requestedFolderId = String(payload.folderId || "").trim();
+    if (requestedFolderId && !before.folders.some(folder => String(folder.id) === requestedFolderId)) {
+      return { ok: false, message: "The selected folder no longer exists. Refresh the panel and try again." };
+    }
+
+    const collectionId = String(payload.collectionId || "").trim();
+    tempPath = await downloadWebClip(imageUrl, pageUrl, String(payload.fileName || "Web clip"));
+    const imported = await importFiles([tempPath], requestedFolderId || null, !!payload.inbox);
+    if (!imported.imported.length) {
+      return { ok: true, duplicate: true, message: "This image is already in MediaVault." };
+    }
+
+    const itemId = imported.imported[0].id;
+    const state = applyWebClipMetadata(itemId, {
+      sourceUrl: payload.saveSource === false ? "" : (isHttpUrl(pageUrl) ? pageUrl : imageUrl),
+      notes: String(payload.notes || ""),
+      tags: Array.isArray(payload.tags) ? payload.tags : [],
+      collectionId
+    });
+    const savedItem = state.items.find(item => item.id === itemId);
+    const folder = state.folders.find(item => String(item.id) === String(requestedFolderId));
+    return {
+      ok: true,
+      duplicate: false,
+      item: savedItem ? { id: savedItem.id, name: savedItem.name } : null,
+      destination: folder ? folder.name : "All items"
+    };
+  } catch (error) {
+    return { ok: false, message: error?.message || "MediaVault could not save this image." };
+  } finally {
+    if (tempPath) { try { fs.rmSync(tempPath, { force: true }); } catch {} }
+  }
+}
+
+function replyJson(res, status, payload) {
+  if (res.writableEnded) return;
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.end(JSON.stringify(payload));
+}
+
+function dispatchWebClipperRequest(clip) {
+  const request = { ...clip, requestId: crypto.randomUUID(), requestedAt: Date.now() };
+  queuedWebClipperRequest = request;
+  const win = mainWindow;
+  if (win && !win.isDestroyed()) {
+    try {
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+      if (webClipperRendererReady && !win.webContents.isLoading()) {
+        win.webContents.send("web-clipper-show-overlay", request);
+        queuedWebClipperRequest = null;
+      }
+    } catch (error) {
+      console.error("Could not display Web Clipper overlay:", error?.message || error);
+    }
+  }
+  return request.requestId;
+}
+
+function startWebClipperBridge() {
+  if (webClipperBridgeServer) return;
+  const server = http.createServer((req, res) => {
+    const origin = String(req.headers.origin || "");
+    res.setHeader("Vary", "Origin");
+    if (origin === WEB_CLIPPER_EXTENSION_ORIGIN) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-MediaVault-Key");
+      res.setHeader("Access-Control-Max-Age", "300");
+    }
+    if (req.method === "OPTIONS") {
+      if (origin !== WEB_CLIPPER_EXTENSION_ORIGIN) { replyJson(res, 403, {}); return; }
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    if (origin !== WEB_CLIPPER_EXTENSION_ORIGIN) {
+      replyJson(res, 403, { ok: false, message: "Untrusted Web Clipper origin." });
+      return;
+    }
+    if (req.method !== "POST" || req.url !== "/clip") {
+      replyJson(res, 404, { ok: false, message: "Endpoint not found." });
+      return;
+    }
+    if (String(req.headers["x-mediavault-key"] || "") !== WEB_CLIPPER_BRIDGE_KEY) {
+      replyJson(res, 403, { ok: false, message: "Invalid MediaVault bridge key." });
+      return;
+    }
+    let body = "";
+    req.on("data", chunk => {
+      body += chunk.toString("utf8");
+      if (body.length > 1024 * 1024) {
+        replyJson(res, 413, { ok: false, message: "Request is too large." });
+        req.destroy();
+      }
+    });
+    req.on("end", async () => {
+      if (res.writableEnded) return;
+      let message;
+      try { message = JSON.parse(body || "{}"); }
+      catch { replyJson(res, 400, { ok: false, message: "Invalid request JSON." }); return; }
+      if (message.action === "get_state") {
+        const db = loadDB();
+        replyJson(res, 200, {
+          ok: true,
+          folders: db.folders.map(folder => ({ id: folder.id, name: folder.name, parentId: folder.parentId || null, color: folder.color || null })),
+          collections: db.collections.map(collection => ({ id: collection.id, name: collection.name })),
+          itemCount: db.items.length
+        });
+        return;
+      }
+      if (message.action === "save_url") {
+        const result = await saveBrowserWebClip(message);
+        if (result?.ok && mainWindow && !mainWindow.isDestroyed()) {
+          try { mainWindow.webContents.send("web-clipper-library-updated", { itemId: result.item?.id || null, duplicate: !!result.duplicate }); } catch {}
+        }
+        replyJson(res, result.ok ? 200 : 400, result);
+        return;
+      }
+      if (message.action !== "show_drop_overlay") {
+        replyJson(res, 400, { ok: false, message: "Unknown Web Clipper action." });
+        return;
+      }
+      const clip = message.clip || {};
+      if (!isHttpUrl(clip.imageUrl)) {
+        replyJson(res, 400, { ok: false, message: "The image URL must use HTTP or HTTPS." });
+        return;
+      }
+      const requestId = dispatchWebClipperRequest({
+        imageUrl: String(clip.imageUrl),
+        pageUrl: isHttpUrl(clip.pageUrl) ? String(clip.pageUrl) : "",
+        pageTitle: String(clip.pageTitle || ""),
+        alt: String(clip.alt || ""),
+        fileName: String(clip.fileName || "Web clip").slice(0, 180)
+      });
+      replyJson(res, 200, { ok: true, requestId });
+    });
+  });
+  server.on("error", error => {
+    console.error(`MediaVault Web Clipper bridge could not listen on 127.0.0.1:${WEB_CLIPPER_BRIDGE_PORT}:`, error?.message || error);
+  });
+  server.listen(WEB_CLIPPER_BRIDGE_PORT, "127.0.0.1");
+  webClipperBridgeServer = server;
+}
 
 function ensureLibrary() {
   for (const dir of [
@@ -157,7 +390,7 @@ function createBackupSnapshot(label="MediaVault Backup") {
     format:"MediaVault Backup",
     formatVersion:1,
     createdAt:new Date().toISOString(),
-    appVersion:"2.0.6"
+    appVersion:"2.0.10"
   };
   fs.writeFileSync(path.join(destination,"backup.json"),JSON.stringify(manifest,null,2));
   if(fs.existsSync(DB_PATH)) fs.copyFileSync(DB_PATH,path.join(destination,"library.json"));
@@ -503,6 +736,24 @@ ipcMain.handle("get-asset-data-url", (_, filePath) => {
 
 ipcMain.handle("get-state", () => loadDB());
 ipcMain.handle("import-files", (_, { paths = [], folderId = null, inInbox = false } = {}) => importFiles(paths, folderId, inInbox));
+
+ipcMain.handle("save-web-clip", async (_, payload = {}) => {
+  let tempPath = null;
+  try {
+    const imageUrl = String(payload.imageUrl || "").trim();
+    if (!isHttpUrl(imageUrl)) return { ok: false, message: "This image URL cannot be saved. Only HTTP and HTTPS images are supported." };
+    tempPath = await downloadWebClip(imageUrl, String(payload.pageUrl || ""), String(payload.fileName || "Web clip"));
+    const imported = await importFiles([tempPath], String(payload.folderId || "") || null, false);
+    if (!imported.imported.length) return { ok: true, duplicate: true, state: imported.state };
+    const itemId = imported.imported[0].id;
+    const state = applyWebClipMetadata(itemId, { sourceUrl: String(payload.pageUrl || imageUrl) });
+    return { ok: true, duplicate: false, state, item: state.items.find(item => item.id === itemId) || null };
+  } catch (error) {
+    return { ok: false, message: error?.message || "MediaVault could not save this image." };
+  } finally {
+    if (tempPath) { try { fs.rmSync(tempPath, { force: true }); } catch {} }
+  }
+});
 
 
 ipcMain.handle("set-items-inbox", (_, { ids = [], inbox = true } = {}) => {
@@ -1220,6 +1471,16 @@ ipcMain.handle("update-item-collections", (_, { ids = [], collectionId, add = tr
 });
 
 
+ipcMain.on("web-clipper-renderer-ready", event => {
+  if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return;
+  webClipperRendererReady = true;
+  if (queuedWebClipperRequest) {
+    const pending = queuedWebClipperRequest;
+    queuedWebClipperRequest = null;
+    mainWindow.webContents.send("web-clipper-show-overlay", pending);
+  }
+});
+
 function createWindow() {
   ensureLibrary();
   if (process.platform === "win32") app.setAppUserModelId("com.mediavault.desktop");
@@ -1240,6 +1501,20 @@ function createWindow() {
     }
   });
 
+  mainWindow = win;
+  webClipperRendererReady = false;
+  win.webContents.on("did-start-loading", () => { webClipperRendererReady = false; });
+  win.on("close", event => {
+    // Keep the local Web Clipper bridge alive when the user closes the window.
+    // The explicit Quit command in the tray menu is the only normal exit path.
+    if (!isQuitting) {
+      event.preventDefault();
+      win.hide();
+      return;
+    }
+  });
+  win.on("closed", () => { if (mainWindow === win) mainWindow = null; });
+
   if (!app.isPackaged) {
     win.loadURL("http://127.0.0.1:5173");
   } else {
@@ -1247,12 +1522,43 @@ function createWindow() {
   }
 }
 
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow();
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+}
+
+function createTray() {
+  if (tray) return;
+  const iconPath = path.join(__dirname, "../assets/mediavault.ico");
+  let icon = nativeImage.createFromPath(iconPath);
+  if (icon.isEmpty()) icon = nativeImage.createEmpty();
+  tray = new Tray(icon);
+  tray.setToolTip("MediaVault — arka planda çalışıyor");
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: "MediaVault'u aç", click: showMainWindow },
+    { type: "separator" },
+    { label: "Tamamen çıkış yap", click: () => { isQuitting = true; app.quit(); } }
+  ]));
+  tray.on("double-click", showMainWindow);
+  tray.on("click", showMainWindow);
+}
+
 app.whenReady().then(() => {
   createWindow();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  createTray();
+  startWebClipperBridge();
+  app.on("activate", () => showMainWindow());
+});
+app.on("before-quit", () => {
+  isQuitting = true;
+  try { webClipperBridgeServer?.close(); } catch {}
+  try { tray?.destroy(); } catch {}
 });
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  // Intentionally keep running in the system tray on Windows/Linux.
+  if (process.platform === "darwin" && isQuitting) app.quit();
 });

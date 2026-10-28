@@ -1,6 +1,6 @@
 {
   "name": "mediavault",
-  "version": "2.0.6",
+  "version": "2.2.7",
   "description": "A local-first Windows media library for organizing and preserving personal media.",
   "main": "electron/main.js",
   "scripts": {

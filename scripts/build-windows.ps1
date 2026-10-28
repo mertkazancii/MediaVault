@@ -4,7 +4,9 @@ Write-Host "MediaVault Windows Release Builder" -ForegroundColor Cyan
 Write-Host ""
 
 $node = node --version
+$version = (Get-Content ".\package.json" -Raw | ConvertFrom-Json).version
 Write-Host "Node: $node"
+Write-Host "Version: $version"
 
 Write-Host ""
 Write-Host "[0/4] Cleaning previous release output..."
@@ -27,19 +29,14 @@ Write-Host "[3/4] Creating Windows installer + portable build..."
 npx electron-builder --win nsis:x64 portable:x64 --publish never
 if ($LASTEXITCODE -ne 0) { throw "electron-builder failed." }
 
-if (-not (Test-Path ".\release\MediaVault-2.0.6-Setup.exe")) {
-    throw "The Windows installer was not created."
-}
-if (-not (Test-Path ".\release\MediaVault-2.0.6-Portable.exe")) {
-    throw "The portable executable was not created."
-}
+$installer = ".\release\MediaVault-$version-Setup.exe"
+$portable = ".\release\MediaVault-$version-Portable.exe"
+if (-not (Test-Path $installer)) { throw "The Windows installer was not created: $installer" }
+if (-not (Test-Path $portable)) { throw "The portable executable was not created: $portable" }
 
 Write-Host ""
 Write-Host "[4/4] Writing SHA-256 checksums..."
-$files = @(
-    ".\release\MediaVault-2.0.6-Setup.exe",
-    ".\release\MediaVault-2.0.6-Portable.exe"
-)
+$files = @($installer, $portable)
 $checksumLines = foreach ($file in $files) {
     $hash = (Get-FileHash -Algorithm SHA256 $file).Hash
     "$hash  $(Split-Path $file -Leaf)"

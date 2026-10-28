@@ -3,6 +3,18 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
 contextBridge.exposeInMainWorld("mediaVault", {
   chooseImportFiles: () => ipcRenderer.invoke("choose-import-files"),
   importFiles: (filePaths, folderId = null, inInbox = false) => ipcRenderer.invoke("import-files", { paths: filePaths, folderId, inInbox }),
+  saveWebClip: (payload) => ipcRenderer.invoke("save-web-clip", payload),
+  onWebClipperRequest: (callback) => {
+    const listener = (_, payload) => callback(payload);
+    ipcRenderer.on("web-clipper-show-overlay", listener);
+    return () => ipcRenderer.removeListener("web-clipper-show-overlay", listener);
+  },
+  notifyWebClipperReady: () => ipcRenderer.send("web-clipper-renderer-ready"),
+  onWebClipperLibraryUpdated: (callback) => {
+    const listener = (_, payload) => callback(payload);
+    ipcRenderer.on("web-clipper-library-updated", listener);
+    return () => ipcRenderer.removeListener("web-clipper-library-updated", listener);
+  },
   pasteClipboard: (folderId = null, inInbox = false) => ipcRenderer.invoke("paste-clipboard", { folderId, inInbox }),
   getDroppedFilePath: (file) => {
     try { return webUtils.getPathForFile(file); } catch { return ""; }
